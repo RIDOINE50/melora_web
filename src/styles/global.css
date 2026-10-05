@@ -1,0 +1,173 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Couleur d'accent — triplet RGB (sans "rgb()") pour permettre les
+     variantes d'opacité Tailwind (bg-accent/15, etc.). Modifiable à la
+     volée par le sélecteur de couleur dans Paramètres. */
+  --color-accent: 249 115 22; /* #f97316 */
+  --color-accent-dark: 234 88 12; /* #ea580c */
+  --color-accent-light: 255 247 237; /* #fff7ed */
+
+  /* Titre/texte fort — blanc par défaut (thème sombre), repris en noir
+     dans le thème clair ci-dessous. */
+  --color-heading: 255 255 255;
+}
+
+@layer base {
+  body {
+    @apply bg-neutral-950 text-neutral-100 antialiased;
+  }
+}
+
+@layer components {
+  /* Logo texte "Mealora" en police manuscrite */
+  .brand-logo {
+    font-family: theme('fontFamily.logo');
+  }
+
+  /* Avatar rond en dégradé, façon Instagram */
+  .avatar-gradient {
+    background: linear-gradient(45deg, #f9ce34, #ee2a7b, #6228d7);
+  }
+
+  /* Légère apparition — cartes de recettes, modales, notifications */
+  .animate-fade-in {
+    animation: fade-in 0.25s ease-out both;
+  }
+
+  .animate-toast-in {
+    animation: toast-in 0.2s ease-out both;
+  }
+
+  /* Titres/texte fort — voir --color-heading ci-dessus. */
+  .text-heading {
+    color: rgb(var(--color-heading));
+  }
+}
+
+/* ============================================================
+   THÈME CLAIR — activé en posant data-theme="light" sur <html>
+   (voir ThemeContext). Plutôt que de dupliquer chaque page avec des
+   variantes dark:, on réassigne ici les couleurs neutres utilisées
+   partout dans l'appli : les composants n'ont rien à savoir du thème.
+   ============================================================ */
+[data-theme='light'] {
+  --color-heading: 23 23 23;
+  color-scheme: light;
+}
+
+[data-theme='light'] body {
+  @apply bg-neutral-950 text-neutral-100;
+}
+
+[data-theme='light'] .bg-neutral-950 {
+  background-color: #f4f4f5;
+}
+[data-theme='light'] .bg-neutral-900 {
+  background-color: #ffffff;
+}
+[data-theme='light'] .bg-neutral-800 {
+  background-color: #eceef0;
+}
+[data-theme='light'] .bg-neutral-700 {
+  background-color: #d4d4d8;
+}
+[data-theme='light'] .hover\:bg-neutral-900:hover {
+  background-color: #eceef0;
+}
+[data-theme='light'] .hover\:bg-neutral-800:hover {
+  background-color: #f4f4f5;
+}
+
+[data-theme='light'] .border-neutral-950 {
+  border-color: #f4f4f5;
+}
+[data-theme='light'] .border-neutral-800 {
+  border-color: #e4e4e7;
+}
+[data-theme='light'] .border-neutral-700 {
+  border-color: #d4d4d8;
+}
+[data-theme='light'] .border-neutral-600 {
+  border-color: #a1a1aa;
+}
+[data-theme='light'] .hover\:border-neutral-700:hover {
+  border-color: #a1a1aa;
+}
+[data-theme='light'] .focus\:border-neutral-600:focus {
+  border-color: #71717a;
+}
+[data-theme='light'] .focus\:border-neutral-700:focus {
+  border-color: #71717a;
+}
+
+[data-theme='light'] .text-neutral-50 {
+  color: #27272a;
+}
+[data-theme='light'] .text-neutral-100 {
+  color: #27272a;
+}
+[data-theme='light'] .text-neutral-200 {
+  color: #3f3f46;
+}
+[data-theme='light'] .text-neutral-300 {
+  color: #52525b;
+}
+[data-theme='light'] .text-neutral-400 {
+  color: #71717a;
+}
+[data-theme='light'] .text-neutral-500 {
+  color: #a1a1aa;
+}
+[data-theme='light'] .text-neutral-600 {
+  color: #a1a1aa;
+}
+[data-theme='light'] .text-neutral-700 {
+  color: #71717a;
+}
+[data-theme='light'] .disabled\:text-neutral-500:disabled {
+  color: #d4d4d8;
+}
+[data-theme='light'] .placeholder\:text-neutral-500::placeholder {
+  color: #a1a1aa;
+}
+[data-theme='light'] .hover\:text-neutral-200:hover {
+  color: #18181b;
+}
+[data-theme='light'] .hover\:text-neutral-300:hover {
+  color: #27272a;
+}
+
+/* Vignettes "image manquante" (dégradé neutre) */
+[data-theme='light'] .from-neutral-800 {
+  --tw-gradient-from: #e4e4e7 var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(228 228 231 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+[data-theme='light'] .to-neutral-900 {
+  --tw-gradient-to: #eceef0 var(--tw-gradient-to-position);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

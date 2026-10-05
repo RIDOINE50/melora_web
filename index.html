@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mealora — Recettes, nutrition et créateurs culinaires</title>
+    <meta
+      name="description"
+      content="Mealora réunit recettes personnalisées, créateurs culinaires vérifiés, planning de repas et liste de courses automatique."
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <script>
+      // Applique le thème et la couleur d'accent stockés localement avant le
+      // premier rendu, pour éviter un flash sombre→clair au chargement.
+      (function () {
+        try {
+          var theme = localStorage.getItem('mealora:theme') || 'dark';
+          if (theme === 'system') {
+            theme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+          }
+          if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+          var accent = localStorage.getItem('mealora:accent-rgb');
+          var accentDark = localStorage.getItem('mealora:accent-dark-rgb');
+          if (accent) document.documentElement.style.setProperty('--color-accent', accent);
+          if (accentDark) document.documentElement.style.setProperty('--color-accent-dark', accentDark);
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Grand+Hotel&family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
