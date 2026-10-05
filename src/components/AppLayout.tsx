@@ -411,13 +411,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       {/* Zone de contenu — centrée dans l'espace restant ; quand la barre
           latérale est fermée, cet espace = tout l'écran, donc le contenu se
           retrouve centré au milieu (comportement "workspace"). */}
-      <main className="mx-auto w-full max-w-2xl flex-1 px-4 pb-24 pt-6 sm:px-6 md:max-w-3xl md:px-8 md:pb-10 md:pt-8 lg:max-w-5xl">
+            <main className="mx-auto w-full max-w-2xl flex-1 px-4 pb-28 pt-6 sm:px-6 md:max-w-3xl md:px-8 md:pb-10 md:pt-8 lg:max-w-5xl">
         {children}
       </main>
 
       {/* Nav basse — mobile uniquement (écrans en dessous de md) */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-neutral-800 bg-neutral-950/95 backdrop-blur md:hidden">
-        <div className="relative mx-auto flex h-16 max-w-2xl items-center justify-around px-2">
+           <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-neutral-800 bg-neutral-950/95 backdrop-blur md:hidden">
+        <div className="relative mx-auto flex h-20 max-w-2xl items-end justify-around px-2 pb-3">
           {TABS.slice(0, 2).map((tab) => {
             const isActive = isActivePath(tab.path);
             return (
@@ -434,13 +434,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             );
           })}
 
-          {profile?.role === 'creator' ? (
+             {profile?.role === 'creator' ? (
             <button
               onClick={() => navigate('/my-recipes/new')}
-              className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-accent text-white shadow-lg shadow-accent/30 transition hover:bg-accent-dark"
+              className="absolute left-1/2 -top-7 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full border-4 border-neutral-950 bg-accent text-white shadow-lg shadow-accent/40 transition hover:bg-accent-dark"
               title="Nouvelle recette"
             >
-              <PlusCircle size={28} strokeWidth={1.8} />
+              <PlusCircle size={26} strokeWidth={2} />
             </button>
           ) : (
             <span className="w-14" />
