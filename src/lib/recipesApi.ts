@@ -38,6 +38,12 @@ async function signedUrl(
 ): Promise<string | null> {
   if (!path || !path.trim()) return null;
   const key = path.trim();
+
+  // ✅ Si c'est déjà une URL complète (Cloudinary), on la renvoie telle quelle.
+  if (key.startsWith('http://') || key.startsWith('https://')) {
+    return key;
+  }
+
   const cached = cache.get(key);
   if (cached && Date.now() - cached.cachedAt < CACHE_VALIDITY_MS) return cached.url;
 

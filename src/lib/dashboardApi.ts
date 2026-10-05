@@ -187,16 +187,36 @@ export async function getCategories(): Promise<Category[]> {
 }
 
 /** Envoie l'image dans le bucket privé `recipe-images` (comme côté mobile). */
+/**
+ * Envoie l'image sur Cloudinary (unsigned upload preset).
+ * Renvoie l'URL publique sécurisée (https://res.cloudinary.com/...).
+ */
 export async function uploadRecipeImage(file: File): Promise<string> {
-  const { data: userData } = await supabase.auth.getUser();
-  const userId = userData.user?.id;
-  if (!userId) throw new Error('Utilisateur non connecté.');
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const preset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
-  const extension = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
-  const path = `${userId}/recipe_${Date.now()}.${extension}`;
-  const { error } = await supabase.storage.from('recipe-images').upload(path, file, { upsert: true });
-  if (error) throw error;
-  return path;
+  if (!cloudName || !preset) {
+    throw new Error(
+      'Variables VITE_CLOUDINARY_CLOUD_NAME / VITE_CLOUDINARY_UPLOAD_PRESET manquantes (vérifie ton .env)'
+    );
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', preset);
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
+    { method: 'POST', body: formData }
+  );
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`Échec de l'upload Cloudinary (${res.status}) ${detail}`);
+  }
+
+  const data = await res.json();
+  return data.secure_url as string;
 }
 
 /**
