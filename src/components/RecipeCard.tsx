@@ -1,10 +1,20 @@
 import { Link } from 'react-router-dom';
 import { Bookmark, Heart, UtensilsCrossed } from 'lucide-react';
 
+/** Transforme une URL Cloudinary de vidéo en URL de miniature JPG. */
+function cloudinaryVideoThumbnail(videoUrl: string | null | undefined): string | null {
+  if (!videoUrl) return null;
+  if (!videoUrl.includes('/video/upload/')) return null;
+  return videoUrl
+    .replace('/video/upload/', '/video/upload/so_0/')
+    .replace(/\.(mp4|mov|webm|avi|mkv)$/i, '.jpg');
+}
+
 export interface RecipeCardProps {
   id: number;
   title: string;
   imageUrl: string | null;
+  videoUrl?: string | null;
   authorId: string;
   authorName: string | null;
   likesCount: number;
@@ -22,6 +32,7 @@ export default function RecipeCard({
   id,
   title,
   imageUrl,
+  videoUrl,
   authorId,
   authorName,
   likesCount,
@@ -30,13 +41,15 @@ export default function RecipeCard({
   onToggleLike,
   onToggleFavorite,
 }: RecipeCardProps) {
+  const thumb = imageUrl ?? cloudinaryVideoThumbnail(videoUrl);
+
   return (
     <article className="animate-fade-in overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900 transition hover:border-neutral-700">
       <div className="relative">
         <Link to={`/recipe/${id}`} className="block">
           <div className="flex aspect-square items-center justify-center overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900 text-neutral-600">
-            {imageUrl ? (
-              <img src={imageUrl} alt={title} className="h-full w-full object-cover" />
+            {thumb ? (
+              <img src={thumb} alt={title} className="h-full w-full object-cover" />
             ) : (
               <UtensilsCrossed size={36} strokeWidth={1.3} />
             )}
