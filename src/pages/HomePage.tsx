@@ -177,15 +177,23 @@ export default function HomePage() {
           <div className="relative overflow-hidden rounded-2xl">
             <Link to={`/recipe/${featured.id}`} className="group block">
               <div className="flex aspect-[16/10] items-center justify-center overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900 text-neutral-600">
-                {featured.imageUrl ? (
-                  <img
-                    src={featured.imageUrl}
-                    alt={featured.title}
-                    className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                  />
-                ) : (
-                  <UtensilsCrossed size={48} strokeWidth={1.3} />
-                )}
+               {featured.imageUrl ? (
+  <img
+    src={featured.imageUrl}
+    alt={featured.title}
+    className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+  />
+) : featured.videoUrl ? (
+  <video
+    src={featured.videoUrl}
+    className="h-full w-full object-cover"
+    muted
+    playsInline
+    preload="metadata"
+  />
+) : (
+  <UtensilsCrossed size={48} strokeWidth={1.3} />
+)}
               </div>
             </Link>
             <button
