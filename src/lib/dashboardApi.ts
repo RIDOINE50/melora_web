@@ -218,6 +218,37 @@ export async function uploadRecipeImage(file: File): Promise<string> {
   const data = await res.json();
   return data.secure_url as string;
 }
+/**
+ * Envoie la vidéo sur Cloudinary (unsigned upload preset).
+ * Renvoie l'URL publique sécurisée (https://res.cloudinary.com/...).
+ */
+export async function uploadRecipeVideo(file: File): Promise<string> {
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const preset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+  if (!cloudName || !preset) {
+    throw new Error(
+      'Variables VITE_CLOUDINARY_CLOUD_NAME / VITE_CLOUDINARY_UPLOAD_PRESET manquantes (vérifie ton .env)'
+    );
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', preset);
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`,
+    { method: 'POST', body: formData }
+  );
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`Échec de l'upload vidéo Cloudinary (${res.status}) ${detail}`);
+  }
+
+  const data = await res.json();
+  return data.secure_url as string;
+}
 
 /**
  * Crée une recette directement en base (contrairement à l'appli mobile
@@ -230,6 +261,7 @@ export async function createRecipe(params: {
   description: string;
   categoryId: number | null;
   imagePath: string | null;
+  videoPath: string | null;
   prepTime: number | null;
   servings: number | null;
   status: 'draft' | 'published';
@@ -247,6 +279,7 @@ export async function createRecipe(params: {
       description: params.description || null,
       category_id: params.categoryId,
       image_url: params.imagePath,
+      video_url: params.videoPath,
       prep_time: params.prepTime,
       servings: params.servings,
       status: params.status,

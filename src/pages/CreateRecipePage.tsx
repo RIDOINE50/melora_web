@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UtensilsCrossed } from 'lucide-react';
+import { UtensilsCrossed, Video } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
-import { createRecipe, getCategories, uploadRecipeImage, type Category } from '../lib/dashboardApi';
+import {
+  createRecipe,
+  getCategories,
+  uploadRecipeImage,
+  uploadRecipeVideo,
+  type Category,
+} from '../lib/dashboardApi';
 import { getErrorMessage } from '../lib/errors';
 import { useToast } from '../components/Toast';
 
@@ -22,6 +28,8 @@ export default function CreateRecipePage() {
   const [servings, setServings] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [videoPreview, setVideoPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -39,6 +47,12 @@ export default function CreateRecipePage() {
     setImagePreview(file ? URL.createObjectURL(file) : null);
   }
 
+  function handleVideoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    setVideoFile(file);
+    setVideoPreview(file ? URL.createObjectURL(file) : null);
+  }
+
   async function handleSubmit(status: 'draft' | 'published') {
     setError(null);
     if (!title.trim()) {
@@ -51,11 +65,16 @@ export default function CreateRecipePage() {
       if (imageFile) {
         imagePath = await uploadRecipeImage(imageFile);
       }
+      let videoPath: string | null = null;
+      if (videoFile) {
+        videoPath = await uploadRecipeVideo(videoFile);
+      }
       await createRecipe({
         title: title.trim(),
         description: description.trim(),
         categoryId: categoryId ? Number(categoryId) : null,
         imagePath,
+        videoPath,
         prepTime: prepTime ? Number(prepTime) : null,
         servings: servings ? Number(servings) : null,
         status,
@@ -156,7 +175,8 @@ export default function CreateRecipePage() {
             />
           </div>
 
-          <div className="mb-2">
+          {/* ===== IMAGE ===== */}
+          <div className="mb-4">
             <label className={labelClasses}>Image de couverture</label>
             <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-[1.5px] border-dashed border-neutral-700 bg-neutral-950 px-4 py-6 text-center text-[13px] text-neutral-400">
               <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
@@ -165,6 +185,20 @@ export default function CreateRecipePage() {
                 <span className="font-semibold text-neutral-100">{imageFile.name}</span>
               ) : (
                 <span>Clique pour choisir une image</span>
+              )}
+            </label>
+          </div>
+
+          {/* ===== VIDÉO ===== */}
+          <div className="mb-2">
+            <label className={labelClasses}>Vidéo de la recette (optionnel)</label>
+            <label className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-[1.5px] border-dashed border-neutral-700 bg-neutral-950 px-4 py-6 text-center text-[13px] text-neutral-400">
+              <input type="file" accept="video/*" onChange={handleVideoChange} className="hidden" />
+              <Video size={22} strokeWidth={1.5} />
+              {videoFile ? (
+                <span className="font-semibold text-neutral-100">{videoFile.name}</span>
+              ) : (
+                <span>Clique pour choisir une vidéo</span>
               )}
             </label>
           </div>
@@ -189,6 +223,7 @@ export default function CreateRecipePage() {
           </div>
         </div>
 
+        {/* ===== APERÇU ===== */}
         <div>
           <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">Aperçu</p>
           <div className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900">
@@ -206,6 +241,9 @@ export default function CreateRecipePage() {
               <p className="line-clamp-3 text-xs text-neutral-500">
                 {description || "La description s'affichera ici."}
               </p>
+              {videoPreview && (
+                <video src={videoPreview} controls className="mt-3 w-full rounded-lg" />
+              )}
             </div>
           </div>
         </div>
