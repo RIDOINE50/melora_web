@@ -396,7 +396,12 @@ export default function HomePage() {
               }}
               className="text-xs font-semibold text-accent hover:text-accent-dark"
             >
-              Voir tout
+              <Link
+  to="/videos"
+  className="text-xs font-semibold text-accent hover:text-accent-dark"
+>
+  Voir plus
+</Link>
             </button>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
