@@ -230,19 +230,20 @@ export default function HomePage() {
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
             {popularRecipes.map((recipe) => (
-              <RecipeCard
-                key={recipe.id}
-                id={recipe.id}
-                title={recipe.title}
-                imageUrl={recipe.imageUrl}
-                authorId={recipe.authorId}
-                authorName={recipe.authorName}
-                likesCount={recipe.likesCount}
-                isLiked={recipe.isLiked}
-                isFavorited={recipe.isFavorited}
-                onToggleLike={() => handleToggleLike(recipe)}
-                onToggleFavorite={() => handleToggleFavorite(recipe)}
-              />
+             <RecipeCard
+  key={recipe.id}
+  id={recipe.id}
+  title={recipe.title}
+  imageUrl={recipe.imageUrl}
+  videoUrl={recipe.videoUrl}
+  authorId={recipe.authorId}
+  authorName={recipe.authorName}
+  likesCount={recipe.likesCount}
+  isLiked={recipe.isLiked}
+  isFavorited={recipe.isFavorited}
+  onToggleLike={() => handleToggleLike(recipe)}
+  onToggleFavorite={() => handleToggleFavorite(recipe)}
+/>
             ))}
           </div>
         </div>
