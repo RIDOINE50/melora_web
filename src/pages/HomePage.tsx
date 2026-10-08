@@ -225,11 +225,11 @@ export default function HomePage() {
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-bold text-neutral-200">À la une</h2>
               <Link
-                to="/recipes"
-                className="text-xs font-semibold text-accent hover:text-accent-dark"
-              >
-                Voir plus
-              </Link>
+  to="/videos"
+  className="text-xs font-semibold text-accent hover:text-accent-dark"
+>
+  Voir plus
+</Link>
             </div>
 
             <div className="relative overflow-hidden rounded-2xl">
