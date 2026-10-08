@@ -9,6 +9,7 @@ import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import HomePage from './pages/HomePage';
+import VideosPage from './pages/VideosPage';
 import ProfilePage from './pages/ProfilePage';
 import CreatorProfilePage from './pages/CreatorProfilePage';
 import RecipeDetailPage from './pages/RecipeDetailPage';
@@ -48,6 +49,7 @@ export default function App() {
 
           <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
           <Route path="/recipes" element={<ProtectedRoute><RecipesPage /></ProtectedRoute>} />
+          <Route path="/videos" element={<ProtectedRoute><VideosPage /></ProtectedRoute>} />
           <Route path="/plan" element={<ProtectedRoute><MealPlanPage /></ProtectedRoute>} />
           <Route path="/shopping" element={<ProtectedRoute><ShoppingListPage /></ProtectedRoute>} />
           <Route path="/creator/:id" element={<ProtectedRoute><CreatorProfilePage /></ProtectedRoute>} />

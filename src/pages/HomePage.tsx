@@ -139,7 +139,7 @@ export default function HomePage() {
       <div className="md:max-w-2xl">
         <div className="mb-5">
           <h1 className="text-2xl font-extrabold text-heading sm:text-3xl">
-            {`Bonjour${profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''} 👋`}
+            {`Bonjour${profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''} `}
           </h1>
           <p className="mt-1.5 text-sm text-neutral-400">
             Découvre les dernières recettes publiées par la communauté.
