@@ -98,16 +98,16 @@ export default function HomePage() {
     });
   }, [recipes, activeCategoryId, query]);
 
-  // Carrousel : 5 dernières recettes qui ont une vidéo (sinon une image)
+  // Carrousel "À la une" : 5 dernières recettes qui ont une VIDÉO
   const carouselItems = useMemo(() => {
     if (query || activeCategoryId !== null) return [];
     return [...recipes]
-      .filter((r) => r.videoUrl || r.imageUrl)
+      .filter((r) => r.videoUrl)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 5);
   }, [recipes, query, activeCategoryId]);
 
-  // Auto-scroll du carrousel toutes les 5 secondes
+  // Auto-scroll toutes les 5 secondes
   useEffect(() => {
     if (carouselItems.length <= 1) return;
     const id = setInterval(() => {
@@ -116,15 +116,23 @@ export default function HomePage() {
     return () => clearInterval(id);
   }, [carouselItems.length]);
 
-  // Remet l'index à 0 si la liste change
+  // Reset si l'index dépasse
   useEffect(() => {
     if (carouselIndex >= carouselItems.length) setCarouselIndex(0);
   }, [carouselItems.length, carouselIndex]);
 
-  const featured = carouselItems[carouselIndex] ?? null;
-  const popularRecipes = carouselItems.length
-    ? filteredRecipes.filter((r) => !carouselItems.some((c) => c.id === r.id))
+  // La vedette (recette la plus likée) — utilisée si AUCUNE vidéo n'existe
+  const featured = useMemo(() => {
+    if (query || activeCategoryId !== null) return null;
+    return [...recipes].sort((a, b) => b.likesCount - a.likesCount)[0] ?? null;
+  }, [recipes, query, activeCategoryId]);
+
+  // Recettes populaires = toutes SAUF la vedette (si pas de carrousel)
+  const popularRecipes = featured && carouselItems.length === 0
+    ? filteredRecipes.filter((r) => r.id !== featured.id)
     : filteredRecipes;
+
+  const activeCarouselItem = carouselItems[carouselIndex];
 
   return (
     <AppLayout>
@@ -205,20 +213,24 @@ export default function HomePage() {
           </div>
         )}
 
-        {!isLoading &&
-          !error &&
-          recipes.length > 0 &&
-          filteredRecipes.length === 0 &&
-          carouselItems.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-neutral-800 bg-neutral-900 py-20 text-center text-sm text-neutral-500">
-              Aucune recette ne correspond.
-            </div>
-          )}
+        {!isLoading && !error && recipes.length > 0 && filteredRecipes.length === 0 && !featured && (
+          <div className="rounded-2xl border border-dashed border-neutral-800 bg-neutral-900 py-20 text-center text-sm text-neutral-500">
+            Aucune recette ne correspond.
+          </div>
+        )}
 
-        {/* ===== CARROUSEL "À LA UNE" ===== */}
+        {/* ===== CARROUSEL "À LA UNE" (vidéos) ===== */}
         {carouselItems.length > 0 && (
           <div className="mb-7">
-            <h2 className="mb-3 text-sm font-bold text-neutral-200">À la une</h2>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-bold text-neutral-200">À la une</h2>
+              <Link
+                to="/recipes"
+                className="text-xs font-semibold text-accent hover:text-accent-dark"
+              >
+                Voir plus
+              </Link>
+            </div>
 
             <div className="relative overflow-hidden rounded-2xl">
               <div
@@ -233,7 +245,7 @@ export default function HomePage() {
                       to={`/recipe/${item.id}`}
                       className="group relative block w-full shrink-0"
                     >
-                      <div className="flex aspect-[16/10] items-center justify-center overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900 text-neutral-600">
+                      <div className="relative flex aspect-[16/10] items-center justify-center overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900 text-neutral-600">
                         {thumb ? (
                           <img
                             src={thumb}
@@ -243,9 +255,14 @@ export default function HomePage() {
                         ) : (
                           <UtensilsCrossed size={48} strokeWidth={1.3} />
                         )}
+
+                        {/* Badge "Vidéo" */}
+                        <span className="absolute left-2.5 top-2.5 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur">
+                          ▶ Vidéo
+                        </span>
                       </div>
 
-                      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-4 pb-10">
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-4 pb-8">
                         <h3 className="text-base font-extrabold text-white sm:text-lg">
                           {item.title}
                         </h3>
@@ -260,7 +277,7 @@ export default function HomePage() {
                 })}
               </div>
 
-              {/* Flèches précédent/suivant */}
+              {/* Flèches */}
               {carouselItems.length > 1 && (
                 <>
                   <button
@@ -284,12 +301,12 @@ export default function HomePage() {
                 </>
               )}
 
-              {/* Bouton like de l'item visible */}
-              {featured && (
+              {/* Like sur l'item actif */}
+              {activeCarouselItem && (
                 <button
                   onClick={(e) => {
                     e.preventDefault();
-                    handleToggleLike(featured);
+                    handleToggleLike(activeCarouselItem);
                   }}
                   className="absolute bottom-2.5 right-2.5 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 backdrop-blur transition hover:bg-black/70"
                   title="J'aime"
@@ -297,12 +314,14 @@ export default function HomePage() {
                   <Heart
                     size={18}
                     strokeWidth={2}
-                    className={featured.isLiked ? 'fill-red-500 text-red-500' : 'text-white'}
+                    className={
+                      activeCarouselItem.isLiked ? 'fill-red-500 text-red-500' : 'text-white'
+                    }
                   />
                 </button>
               )}
 
-              {/* Points indicateurs */}
+              {/* Points */}
               {carouselItems.length > 1 && (
                 <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 gap-1.5">
                   {carouselItems.map((_, i) => (
@@ -320,9 +339,52 @@ export default function HomePage() {
             </div>
           </div>
         )}
+
+        {/* ===== VEDETTE (si pas de vidéo) ===== */}
+        {carouselItems.length === 0 && featured && (
+          <div className="mb-7">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-bold text-neutral-200">À la une</h2>
+              <Link
+                to="/recipes"
+                className="text-xs font-semibold text-accent hover:text-accent-dark"
+              >
+                Voir plus
+              </Link>
+            </div>
+            <div className="relative overflow-hidden rounded-2xl">
+              <Link to={`/recipe/${featured.id}`} className="group block">
+                <div className="flex aspect-[16/10] items-center justify-center overflow-hidden bg-gradient-to-br from-neutral-800 to-neutral-900 text-neutral-600">
+                  {featured.imageUrl ? (
+                    <img
+                      src={featured.imageUrl}
+                      alt={featured.title}
+                      className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                    />
+                  ) : (
+                    <UtensilsCrossed size={48} strokeWidth={1.3} />
+                  )}
+                </div>
+              </Link>
+              <button
+                onClick={() => handleToggleLike(featured)}
+                className="absolute bottom-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 backdrop-blur transition hover:bg-black/70"
+              >
+                <Heart
+                  size={18}
+                  strokeWidth={2}
+                  className={featured.isLiked ? 'fill-red-500 text-red-500' : 'text-white'}
+                />
+              </button>
+            </div>
+            <Link to={`/recipe/${featured.id}`}>
+              <h3 className="mt-3 text-base font-extrabold text-heading">{featured.title}</h3>
+            </Link>
+          </div>
+        )}
       </div>
 
-      {/* ===== RECETTES POPULAIRES ===== */}
+      {/* ===== RECETTES POPULAIRES (toujours affichées) ===== */}
       {popularRecipes.length > 0 && (
         <div>
           <div className="mb-3 flex items-center justify-between">
