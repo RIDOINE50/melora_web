@@ -273,18 +273,19 @@ export async function createRecipe(params: {
   const now = new Date().toISOString();
   const { data, error } = await supabase
     .from('recipes')
-    .insert({
-      author_id: userId,
-      title: params.title,
-      description: params.description || null,
-      category_id: params.categoryId,
-      image_url: params.imagePath,
-      video_url: params.videoPath,
-      prep_time: params.prepTime,
-      servings: params.servings,
-      status: params.status,
-      published_at: params.status === 'published' ? now : null,
-    })
+   .insert({
+  author_id: userId,
+  title: params.title,
+  description: params.description || null,
+  category_id: params.categoryId,
+  image_url: params.imagePath,
+  video_url: params.videoPath,
+  prep_time: params.prepTime,
+  servings: params.servings,
+  status: params.status,
+  source_type: params.videoPath ? 'video' : 'manual',  // ← ✅ AJOUT
+  published_at: params.status === 'published' ? now : null,
+})
     .select('id')
     .single();
   if (error) throw error;
