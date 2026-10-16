@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Trash2, UtensilsCrossed } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 import RecipePickerModal from '../components/RecipePickerModal';
@@ -17,15 +17,23 @@ import { useToast } from '../components/Toast';
 
 const WEEKDAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
+/**
+ * Clé de date au format YYYY-MM-DD en heure LOCALE.
+ * On n'utilise PAS toISOString() car ça convertit en UTC
+ * et peut décaler d'un jour selon le fuseau horaire.
+ */
 function toDateKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function isSameDay(a: Date, b: Date): boolean {
   return toDateKey(a) === toDateKey(b);
 }
 
-/** Grille de 6 semaines (lundi→dimanche) couvrant le mois affiché. */
+/** Grille de 6 semaines (lundi → dimanche) couvrant le mois affiché. */
 function buildMonthGrid(month: Date): Date[] {
   const firstOfMonth = new Date(month.getFullYear(), month.getMonth(), 1);
   const firstWeekday = (firstOfMonth.getDay() + 6) % 7; // 0 = lundi
@@ -42,6 +50,7 @@ function buildMonthGrid(month: Date): Date[] {
 export default function MealPlanPage() {
   const { user } = useAuth();
   const { showToast } = useToast();
+
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -49,64 +58,122 @@ export default function MealPlanPage() {
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const [entries, setEntries] = useState<MealPlanEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickerMealType, setPickerMealType] = useState<MealType | null>(null);
 
   const monthGrid = useMemo(() => buildMonthGrid(visibleMonth), [visibleMonth]);
   const today = useMemo(() => new Date(), []);
 
+  const fromKey = useMemo(() => toDateKey(monthGrid[0]), [monthGrid]);
+  const toKey = useMemo(() => toDateKey(monthGrid[monthGrid.length - 1]), [monthGrid]);
+
+  /** Recharge les entrées du mois affiché. */
+  const reloadEntries = useCallback(async () => {
+    if (!user) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await getMealPlanEntries(user.id, new Date(fromKey), new Date(toKey));
+      setEntries(data);
+    } catch (err) {
+      setError(getErrorMessage(err, 'Impossible de charger le planning.'));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, fromKey, toKey]);
+
   useEffect(() => {
     if (!user) return;
     let isMounted = true;
     setIsLoading(true);
-    const from = monthGrid[0];
-    const to = monthGrid[monthGrid.length - 1];
-    getMealPlanEntries(user.id, from, to)
+    setError(null);
+
+    getMealPlanEntries(user.id, new Date(fromKey), new Date(toKey))
       .then((data) => {
         if (isMounted) setEntries(data);
       })
       .catch((err) => {
-        if (isMounted) setError(getErrorMessage(err));
+        if (isMounted) setError(getErrorMessage(err, 'Impossible de charger le planning.'));
       })
       .finally(() => {
         if (isMounted) setIsLoading(false);
       });
+
     return () => {
       isMounted = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, visibleMonth]);
+  }, [user, fromKey, toKey]);
 
-  const daysWithMeals = useMemo(() => new Set(entries.map((e) => e.planDate)), [entries]);
-  const selectedDateKey = toDateKey(selectedDate);
-  const entriesForSelectedDay = entries.filter((e) => e.planDate === selectedDateKey);
+  const daysWithMeals = useMemo(
+    () => new Set(entries.map((e) => e.planDate)),
+    [entries],
+  );
 
+  const selectedDateKey = useMemo(() => toDateKey(selectedDate), [selectedDate]);
+
+  const entriesForSelectedDay = useMemo(
+    () => entries.filter((e) => e.planDate === selectedDateKey),
+    [entries, selectedDateKey],
+  );
+
+  /** Ajout d'une recette au planning. */
   async function handleSelectRecipe(recipe: RecipeCardData) {
-    if (!user || !pickerMealType) return;
+    if (!user || !pickerMealType || isSaving) return;
+
+    const mealType = pickerMealType;
+    setIsSaving(true);
+    setError(null);
+
     try {
-      await addMealPlanEntry({
+      const created = await addMealPlanEntry({
         userId: user.id,
-        planDate: selectedDateKey,
-        mealType: pickerMealType,
+        planDate: selectedDateKey, // déjà au format YYYY-MM-DD local
+        mealType,
         recipeId: recipe.id,
       });
-      const from = monthGrid[0];
-      const to = monthGrid[monthGrid.length - 1];
-      setEntries(await getMealPlanEntries(user.id, from, to));
+
+      // Mise à jour optimiste : on ajoute directement l'entrée renvoyée
+      // par l'API (ou un fallback construit localement si l'API ne renvoie rien).
+      const newEntry: MealPlanEntry =
+        created ?? {
+          id: `${Date.now()}`,
+          userId: user.id,
+          planDate: selectedDateKey,
+          mealType,
+          recipeId: recipe.id,
+          recipeTitle: recipe.title,
+          recipeImageUrl: recipe.imageUrl ?? null,
+        };
+
+      setEntries((prev) => [...prev, newEntry]);
       showToast('Recette ajoutée au planning.');
+
+      // Optionnel : resynchroniser avec le serveur pour être sûr
+      // que l'ID / les données correspondent bien.
+      void reloadEntries();
     } catch (err) {
       setError(getErrorMessage(err, "Impossible d'ajouter cette recette."));
+      showToast("Impossible d'ajouter cette recette.", 'error');
     } finally {
+      setIsSaving(false);
       setPickerMealType(null);
     }
   }
 
+  /** Suppression d'une entrée. */
   async function handleRemoveEntry(entry: MealPlanEntry) {
+    const previous = entries;
+    // Mise à jour optimiste
     setEntries((prev) => prev.filter((e) => e.id !== entry.id));
+
     try {
       await removeMealPlanEntry(entry.id);
     } catch (err) {
+      // Rollback en cas d'échec
+      setEntries(previous);
       setError(getErrorMessage(err, 'Impossible de supprimer.'));
+      showToast('Impossible de supprimer.', 'error');
     }
   }
 
@@ -126,7 +193,9 @@ export default function MealPlanPage() {
             </h1>
             <div className="flex items-center gap-1">
               <button
-                onClick={() => setVisibleMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
+                onClick={() =>
+                  setVisibleMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))
+                }
                 className="rounded-full p-1.5 text-neutral-400 hover:bg-neutral-900"
               >
                 <ChevronLeft size={18} strokeWidth={2} />
@@ -142,7 +211,9 @@ export default function MealPlanPage() {
                 Aujourd'hui
               </button>
               <button
-                onClick={() => setVisibleMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
+                onClick={() =>
+                  setVisibleMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))
+                }
                 className="rounded-full p-1.5 text-neutral-400 hover:bg-neutral-900"
               >
                 <ChevronRight size={18} strokeWidth={2} />
@@ -164,7 +235,7 @@ export default function MealPlanPage() {
                 const hasMeals = daysWithMeals.has(toDateKey(day));
                 return (
                   <button
-                    key={day.toISOString()}
+                    key={toDateKey(day)}
                     onClick={() => setSelectedDate(day)}
                     className="flex flex-col items-center gap-0.5 py-0.5"
                   >
@@ -181,7 +252,9 @@ export default function MealPlanPage() {
                     >
                       {day.getDate()}
                     </span>
-                    <span className={`h-1 w-1 rounded-full ${hasMeals ? 'bg-accent' : ''}`} />
+                    <span
+                      className={`h-1 w-1 rounded-full ${hasMeals ? 'bg-accent' : ''}`}
+                    />
                   </button>
                 );
               })}
@@ -190,74 +263,77 @@ export default function MealPlanPage() {
         </div>
 
         <div className="min-w-0 flex-1">
-      <h2 className="mb-3 text-sm font-bold capitalize text-neutral-200">
-        {selectedDate.toLocaleDateString('fr-FR', {
-          weekday: 'short',
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-        })}
-      </h2>
+          <h2 className="mb-3 text-sm font-bold capitalize text-neutral-200">
+            {selectedDate.toLocaleDateString('fr-FR', {
+              weekday: 'short',
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            })}
+          </h2>
 
-      {isLoading ? (
-        <div className="py-16 text-center text-sm text-neutral-500">Chargement…</div>
-      ) : (
-        <div className="space-y-3 md:grid md:grid-cols-3 md:gap-4 md:space-y-0 lg:grid-cols-1 lg:space-y-3">
-          {MEAL_TYPES.map((meal) => {
-            const mealEntries = entriesForSelectedDay.filter((e) => e.mealType === meal.value);
-            return (
-              <div
-                key={meal.value}
-                className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4"
-              >
-                <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-accent">
-                  {meal.label}
-                </h3>
+          {isLoading ? (
+            <div className="py-16 text-center text-sm text-neutral-500">Chargement…</div>
+          ) : (
+            <div className="space-y-3 md:grid md:grid-cols-3 md:gap-4 md:space-y-0 lg:grid-cols-1 lg:space-y-3">
+              {MEAL_TYPES.map((meal) => {
+                const mealEntries = entriesForSelectedDay.filter(
+                  (e) => e.mealType === meal.value,
+                );
+                return (
+                  <div
+                    key={meal.value}
+                    className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4"
+                  >
+                    <h3 className="mb-3 text-xs font-bold uppercase tracking-wide text-accent">
+                      {meal.label}
+                    </h3>
 
-                {mealEntries.length > 0 && (
-                  <div className="mb-3 space-y-2">
-                    {mealEntries.map((entry) => (
-                      <div
-                        key={entry.id}
-                        className="flex items-center gap-3 rounded-xl border border-neutral-800 bg-neutral-950 p-2"
-                      >
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-neutral-900 text-neutral-600">
-                          {entry.recipeImageUrl ? (
-                            <img
-                              src={entry.recipeImageUrl}
-                              alt={entry.recipeTitle}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <UtensilsCrossed size={16} strokeWidth={1.5} />
-                          )}
-                        </span>
-                        <span className="flex-1 truncate text-sm font-semibold text-neutral-100">
-                          {entry.recipeTitle}
-                        </span>
-                        <button
-                          onClick={() => handleRemoveEntry(entry)}
-                          className="rounded-full p-1.5 text-neutral-500 hover:bg-neutral-900 hover:text-red-400"
-                        >
-                          <Trash2 size={15} strokeWidth={2} />
-                        </button>
+                    {mealEntries.length > 0 && (
+                      <div className="mb-3 space-y-2">
+                        {mealEntries.map((entry) => (
+                          <div
+                            key={entry.id}
+                            className="flex items-center gap-3 rounded-xl border border-neutral-800 bg-neutral-950 p-2"
+                          >
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-neutral-900 text-neutral-600">
+                              {entry.recipeImageUrl ? (
+                                <img
+                                  src={entry.recipeImageUrl}
+                                  alt={entry.recipeTitle}
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <UtensilsCrossed size={16} strokeWidth={1.5} />
+                              )}
+                            </span>
+                            <span className="flex-1 truncate text-sm font-semibold text-neutral-100">
+                              {entry.recipeTitle}
+                            </span>
+                            <button
+                              onClick={() => handleRemoveEntry(entry)}
+                              className="rounded-full p-1.5 text-neutral-500 hover:bg-neutral-900 hover:text-red-400"
+                            >
+                              <Trash2 size={15} strokeWidth={2} />
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
+                    )}
 
-                <button
-                  onClick={() => setPickerMealType(meal.value)}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-neutral-700 py-2 text-xs font-semibold text-neutral-400 transition hover:border-accent hover:text-accent"
-                >
-                  <Plus size={14} strokeWidth={2.5} />
-                  Ajouter une recette
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                    <button
+                      onClick={() => setPickerMealType(meal.value)}
+                      disabled={isSaving}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-neutral-700 py-2 text-xs font-semibold text-neutral-400 transition hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Plus size={14} strokeWidth={2.5} />
+                      {isSaving ? 'Enregistrement…' : 'Ajouter une recette'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
