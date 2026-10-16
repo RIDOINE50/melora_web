@@ -17,11 +17,6 @@ import { useToast } from '../components/Toast';
 
 const WEEKDAY_LABELS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
 
-/**
- * Clé de date au format YYYY-MM-DD en heure LOCALE.
- * On n'utilise PAS toISOString() car ça convertit en UTC
- * et peut décaler d'un jour selon le fuseau horaire.
- */
 function toDateKey(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -33,10 +28,9 @@ function isSameDay(a: Date, b: Date): boolean {
   return toDateKey(a) === toDateKey(b);
 }
 
-/** Grille de 6 semaines (lundi → dimanche) couvrant le mois affiché. */
 function buildMonthGrid(month: Date): Date[] {
   const firstOfMonth = new Date(month.getFullYear(), month.getMonth(), 1);
-  const firstWeekday = (firstOfMonth.getDay() + 6) % 7; // 0 = lundi
+  const firstWeekday = (firstOfMonth.getDay() + 6) % 7;
   const gridStart = new Date(firstOfMonth);
   gridStart.setDate(gridStart.getDate() - firstWeekday);
 
@@ -128,29 +122,14 @@ export default function MealPlanPage() {
     try {
       const created = await addMealPlanEntry({
         userId: user.id,
-        planDate: selectedDateKey, // déjà au format YYYY-MM-DD local
+        planDate: selectedDateKey,
         mealType,
         recipeId: recipe.id,
       });
 
-      // Mise à jour optimiste : on ajoute directement l'entrée renvoyée
-      // par l'API (ou un fallback construit localement si l'API ne renvoie rien).
-      const newEntry: MealPlanEntry =
-        created ?? {
-          id: `${Date.now()}`,
-          userId: user.id,
-          planDate: selectedDateKey,
-          mealType,
-          recipeId: recipe.id,
-          recipeTitle: recipe.title,
-          recipeImageUrl: recipe.imageUrl ?? null,
-        };
-
-      setEntries((prev) => [...prev, newEntry]);
+      setEntries((prev) => [...prev, created]);
       showToast('Recette ajoutée au planning.');
 
-      // Optionnel : resynchroniser avec le serveur pour être sûr
-      // que l'ID / les données correspondent bien.
       void reloadEntries();
     } catch (err) {
       setError(getErrorMessage(err, "Impossible d'ajouter cette recette."));
@@ -161,16 +140,14 @@ export default function MealPlanPage() {
     }
   }
 
-  /** Suppression d'une entrée. */
+  /** ✅ Suppression d'une entrée (RESTAURÉE). */
   async function handleRemoveEntry(entry: MealPlanEntry) {
     const previous = entries;
-    // Mise à jour optimiste
     setEntries((prev) => prev.filter((e) => e.id !== entry.id));
 
     try {
       await removeMealPlanEntry(entry.id);
     } catch (err) {
-      // Rollback en cas d'échec
       setEntries(previous);
       setError(getErrorMessage(err, 'Impossible de supprimer.'));
       showToast('Impossible de supprimer.', 'error');
