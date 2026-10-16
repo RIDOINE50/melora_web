@@ -1,12 +1,13 @@
 import { supabase } from './supabase';
 import { resolveRecipeImageUrl } from './recipesApi';
 
-export type MealType = 'breakfast' | 'lunch' | 'dinner';
+export type MealType = 'petit_dejeuner' | 'dejeuner' | 'diner' | 'collation';
 
 export const MEAL_TYPES: { value: MealType; label: string }[] = [
-  { value: 'breakfast', label: 'Petit-déjeuner' },
-  { value: 'lunch', label: 'Déjeuner' },
-  { value: 'dinner', label: 'Dîner' },
+  { value: 'petit_dejeuner', label: 'Petit-déjeuner' },
+  { value: 'dejeuner', label: 'Déjeuner' },
+  { value: 'diner', label: 'Dîner' },
+  { value: 'collation', label: 'Collation' },
 ];
 
 export interface MealPlanEntry {
@@ -18,19 +19,6 @@ export interface MealPlanEntry {
   recipeImageUrl: string | null;
 }
 
-/**
- * Ligne brute renvoyée par Supabase.
- * ⚠️ `recipes` est renvoyé comme un TABLEAU par Supabase
- * (même pour une relation 1-1), d'où le type `[]`.
- */
-interface MealPlanRow {
-  id: number;
-  plan_date: string;
-  meal_type: MealType;
-  recipe_id: number;
-  recipes: { title: string; image_url: string | null }[] | null;
-}
-
 /** Clé de date au format YYYY-MM-DD en heure LOCALE (évite le décalage UTC). */
 function toDateKey(date: Date): string {
   const y = date.getFullYear();
@@ -40,7 +28,6 @@ function toDateKey(date: Date): string {
 }
 
 /** Toutes les entrées d'un utilisateur entre deux dates (bornes incluses). */
-/** Toutes les entrées d'un utilisateur entre deux dates (bornes incluses). */
 export async function getMealPlanEntries(
   userId: string,
   from: Date,
@@ -48,7 +35,7 @@ export async function getMealPlanEntries(
 ): Promise<MealPlanEntry[]> {
   const { data, error } = await supabase
     .from('meal_plan_entries')
-    .select('id, plan_date, meal_type, recipe_id') // ⚠️ plus de jointure recipes(...)
+    .select('id, plan_date, meal_type, recipe_id')
     .eq('user_id', userId)
     .gte('plan_date', toDateKey(from))
     .lte('plan_date', toDateKey(to))
@@ -56,8 +43,6 @@ export async function getMealPlanEntries(
 
   if (error) throw error;
 
-  // Sans jointure, on n'a pas le titre ni l'image.
-  // On met des valeurs par défaut (ou tu peux enrichir côté client).
   return ((data ?? []) as Array<{
     id: number;
     plan_date: string;
@@ -68,7 +53,7 @@ export async function getMealPlanEntries(
     planDate: r.plan_date,
     mealType: r.meal_type,
     recipeId: r.recipe_id,
-    recipeTitle: 'Recette', // ou charger le titre via un autre appel
+    recipeTitle: 'Recette',
     recipeImageUrl: null,
   }));
 }
@@ -87,7 +72,7 @@ export async function addMealPlanEntry(input: {
       meal_type: input.mealType,
       recipe_id: input.recipeId,
     })
-    .select('id, plan_date, meal_type, recipe_id') // ⚠️ plus de jointure
+    .select('id, plan_date, meal_type, recipe_id')
     .single();
 
   if (error) throw error;
@@ -101,6 +86,7 @@ export async function addMealPlanEntry(input: {
     recipeImageUrl: null,
   };
 }
+
 export async function removeMealPlanEntry(id: number) {
   const { error } = await supabase.from('meal_plan_entries').delete().eq('id', id);
   if (error) throw error;
