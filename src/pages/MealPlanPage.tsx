@@ -112,33 +112,33 @@ export default function MealPlanPage() {
   );
 
   /** Ajout d'une recette au planning. */
-  async function handleSelectRecipe(recipe: RecipeCardData) {
-    if (!user || !pickerMealType || isSaving) return;
+  /** Ajout d'une recette au planning. */
+async function handleSelectRecipe(recipe: RecipeCardData) {
+  if (!user || !pickerMealType || isSaving) return;
 
-    const mealType = pickerMealType;
-    setIsSaving(true);
-    setError(null);
+  const mealType = pickerMealType;
+  setIsSaving(true);
+  setError(null);
 
-    try {
-      const created = await addMealPlanEntry({
-        userId: user.id,
-        planDate: selectedDateKey,
-        mealType,
-        recipeId: recipe.id,
-      });
+  try {
+    await addMealPlanEntry({
+      userId: user.id,
+      planDate: selectedDateKey,
+      mealType,
+      recipeId: recipe.id,
+    });
 
-      setEntries((prev) => [...prev, created]);
-      showToast('Recette ajoutée au planning.');
-
-      void reloadEntries();
-    } catch (err) {
-      setError(getErrorMessage(err, "Impossible d'ajouter cette recette."));
-      showToast("Impossible d'ajouter cette recette.", 'error');
-    } finally {
-      setIsSaving(false);
-      setPickerMealType(null);
-    }
+    // On recharge depuis le serveur pour récupérer l'entrée créée
+    await reloadEntries();
+    showToast('Recette ajoutée au planning.');
+  } catch (err) {
+    setError(getErrorMessage(err, "Impossible d'ajouter cette recette."));
+    showToast("Impossible d'ajouter cette recette.", 'error');
+  } finally {
+    setIsSaving(false);
+    setPickerMealType(null);
   }
+}
 
   /** ✅ Suppression d'une entrée (RESTAURÉE). */
   async function handleRemoveEntry(entry: MealPlanEntry) {

@@ -60,19 +60,33 @@ export async function getMealPlanEntries(
   );
 }
 
-export async function addMealPlanEntry(params: {
+export async function addMealPlanEntry(input: {
   userId: string;
   planDate: string;
   mealType: MealType;
-  recipeId: number;
-}) {
-  const { error } = await supabase.from('meal_plan_entries').insert({
-    user_id: params.userId,
-    plan_date: params.planDate,
-    meal_type: params.mealType,
-    recipe_id: params.recipeId,
-  });
+  recipeId: string;
+}): Promise<MealPlanEntry> {
+  const { data, error } = await supabase
+    .from('meal_plan_entries')
+    .insert({
+      user_id: input.userId,
+      plan_date: input.planDate,
+      meal_type: input.mealType,
+      recipe_id: input.recipeId,
+    })
+    .select('id, plan_date, meal_type, recipe_id, recipes(title, image_url)')
+    .single();
+
   if (error) throw error;
+
+  return {
+    id: data.id,
+    planDate: data.plan_date,
+    mealType: data.meal_type,
+    recipeId: data.recipe_id,
+    recipeTitle: data.recipes?.title ?? '',
+    recipeImageUrl: data.recipes?.image_url ?? null,
+  };
 }
 
 export async function removeMealPlanEntry(id: number) {
